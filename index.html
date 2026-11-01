@@ -27,7 +27,7 @@ header { display: flex; align-items: center; justify-content: space-between; mar
 h1 { font-size: 18px; font-weight: 600; margin: 0; }
 #year { font-size: 13px; color: #62645e; font-variant-numeric: tabular-nums; }
 
-/* Mřížka 7 sloupce */
+/* Mřížka po 7 sloupcích */
 #grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -50,7 +50,7 @@ h1 { font-size: 18px; font-weight: 600; margin: 0; }
 }
 
 .day.done { background: var(--done); border-color: var(--done); }
-.day.future { background: var(--future); border-color: var(--future); cursor: default; opacity: 0.6; }
+.day.future { background: var(--future); border-color: var(--future); cursor: default; opacity: 0.5; }
 .day.today { outline: 2.5px solid var(--today); outline-offset: 1px; }
 
 /* Ikony uvnitř políček */
@@ -134,7 +134,7 @@ button.utility {
     <div id="year">100 dní</div>
   </header>
 
-  <div id="grid" role="group" aria-label="100 denní návykometr"></div>
+  <div id="grid" role="group" aria-label="100denní návykometr"></div>
 
   <div class="controls">
     <div class="color-pickers">
@@ -166,7 +166,9 @@ button.utility {
         keyMissed = 'navykometr-missed-dates-v1',
         keyColors = 'navykometr-colors-v1';
 
-  // Načtení dat o nesplněných dnech
+  // Hodina překlopení nového dne (7:00 AM)
+  const SHIFT_HOURS = 7;
+
   function loadMissed() {
     try {
       const a = JSON.parse(localStorage.getItem(keyMissed) || '[]');
@@ -174,7 +176,6 @@ button.utility {
     } catch(e) { return new Set(); }
   }
 
-  // Načtení a aplikace barviček
   function loadColors() {
     try {
       const c = JSON.parse(localStorage.getItem(keyColors) || '{}');
@@ -194,6 +195,16 @@ button.utility {
 
   const dateKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   
+  // Výpočet aktuálního dne s ohledem na 7. hodinu ranní
+  function getAdjustedToday() {
+    const now = new Date();
+    // Pokud je méně než 7:00 ráno, odečteme 1 den
+    if (now.getHours() < SHIFT_HOURS) {
+      now.setDate(now.getDate() - 1);
+    }
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+  }
+
   function saveMissed() {
     try {
       localStorage.setItem(keyMissed, JSON.stringify([...missed]));
@@ -213,28 +224,28 @@ button.utility {
   }
 
   function render() {
-    const now = new Date();
-    const todayStr = dateKey(now);
+    const baseToday = getAdjustedToday();
+    const todayStr = dateKey(baseToday);
     grid.replaceChildren();
 
-    // Vygenerujeme 100 dní od dneška dále
-    for (let i = 0; i < 100; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, 12, 0, 0);
+    // Generujeme 100 dní: začínáme 2 dny v minulosti (aby byly vidět 3 dny: předevčírem, včera, dnes)
+    for (let i = -2; i < 98; i++) {
+      // Vytvoříme novou nezávislou instanci data pro každé políčko
+      const d = new Date(baseToday.getTime() + (i * 86400000));
       const k = dateKey(d);
-      const isToday = (i === 0);
-      const isFuture = (i > 0);
+      
+      const isToday = (k === todayStr);
+      const isFuture = (d > baseToday);
       const isMissed = missed.has(k);
 
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'day';
 
-      // Nastavení textového popisku
       let stateText = isFuture ? 'budoucí den' : (isMissed ? 'nesplněno' : 'splněno');
       b.setAttribute('aria-label', `${k}: ${stateText}`);
       b.title = `${k} — ${stateText}`;
 
-      // Vzhled políčka
       if (isToday) {
         b.classList.add('today');
       }
@@ -248,7 +259,6 @@ button.utility {
           b.classList.add('done');
         }
 
-        // Klikatelná jsou pouze dnešní a minulá políčka
         b.addEventListener('click', () => {
           if (missed.has(k)) {
             missed.delete(k);
@@ -264,19 +274,16 @@ button.utility {
     }
   }
 
-  // Změna barvy splněno
   doneColorInput.addEventListener('input', (e) => {
     document.documentElement.style.setProperty('--done', e.target.value);
     saveColors();
   });
 
-  // Změna barvy dneška
   todayColorInput.addEventListener('input', (e) => {
     document.documentElement.style.setProperty('--today', e.target.value);
     saveColors();
   });
 
-  // Export zálohy
   document.getElementById('backup').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify({ format: 'navykometr-v1', missed: [...missed] }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -288,7 +295,6 @@ button.utility {
     notice.textContent = 'Záloha stažena.';
   });
 
-  // Import zálohy
   document.getElementById('restore').addEventListener('click', () => document.getElementById('file').click());
   document.getElementById('file').addEventListener('change', async e => {
     const f = e.target.files && e.target.files[0];
@@ -299,7 +305,7 @@ button.utility {
       missed = new Set(d.missed);
       saveMissed();
       render();
-      notice.textContent = 'Záloha byla obnovena.';
+      notice.textContent = 'Záloha bola obnovená.';
     } catch (_) {
       notice.textContent = 'Soubor není platná záloha.';
     }
