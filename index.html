@@ -228,13 +228,12 @@ button.utility {
     const currentActiveDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const currentActiveKey = dateKey(currentActiveDate.getFullYear(), currentActiveDate.getMonth(), currentActiveDate.getDate());
 
-    // 2. Fixní počáteční datum: 1. 11. (Listopad je měsíc index 10 v JS)
+    // 2. Fixní počáteční datum: 2. 11. (Listopad je měsíc index 10 v JS)
     const currentYear = now.getFullYear();
-    // Pokud je právě např. leden a start 1.11. byl minulý rok, upravíme rok
-    const startYear = (now.getMonth() < 10 && currentActiveDate < new Date(currentYear, 10, 1)) ? currentYear - 1 : currentYear;
-    const startDate = new Date(startYear, 10, 1);
+    const startYear = (now.getMonth() < 10 && currentActiveDate < new Date(currentYear, 10, 2)) ? currentYear - 1 : currentYear;
+    const startDate = new Date(startYear, 10, 2);
 
-    // 3. Generování 100 dní od 1.11.
+    // 3. Generování 100 dní od 2.11.
     for (let i = 0; i < 100; i++) {
       const cellDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
       const k = dateKey(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
